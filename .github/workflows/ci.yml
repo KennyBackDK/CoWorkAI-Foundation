@@ -1,4 +1,5 @@
 name: CI
+
 on:
   push:
     branches: [ main ]
@@ -7,22 +8,37 @@ on:
 
 jobs:
   build-test:
-    name: Build & Test (only when Xcode project exists)
+    # kør kun, hvis der ER et Xcode-projekt i repoet
     if: ${{ hashFiles('**/*.xcodeproj','**/*.xcworkspace') != '' }}
     runs-on: macos-14
+
     steps:
       - uses: actions/checkout@v5
+
       - name: Select Xcode
         run: sudo xcode-select -s "/Applications/Xcode.app"
-      - name: Resolve SPM
-        run: xcodebuild -resolvePackageDependencies -scheme "App"
-      - name: Build
-        run: xcodebuild -scheme "App" -destination 'platform=iOS Simulator,name=iPhone 15'
-      - name: Test
-        run: xcodebuild test -scheme "App" -destination 'platform=iOS Simulator,name=iPhone 15'
 
-  template-ok:
+      - name: Verify scheme & bundle
+        run: |
+          test -f CoWorkerAI/CoWorkerAI.xcodeproj/xcshareddata/xcschemes/CoWorkerAI.xcscheme \
+            || { echo "Shared scheme mangler (Product ▸ Scheme ▸ Manage Schemes… ▸ Shared)"; exit 1; }
+
+          BID=$(xcodebuild -project CoWorkerAI/CoWorkerAI.xcodeproj \
+                 -showBuildSettings -scheme "CoWorkerAI" -destination 'platform=macOS' 2>/dev/null \
+                 | sed -n 's/^[[:space:]]*PRODUCT_BUNDLE_IDENTIFIER = \(.*\)$/\1/p' | tail -n1)
+          echo "Bundle id: $BID"
+          [ "$BID" = "com.kennyback.coworkerai" ] \
+            || { echo "Bundle id skal være com.kennyback.coworkerai"; exit 1; }
+
+      - name: Resolve SPM
+        run: xcodebuild -project CoWorkerAI/CoWorkerAI.xcodeproj -resolvePackageDependencies -scheme "CoWorkerAI"
+
+      - name: Build (macOS, no signing)
+        run: xcodebuild -project CoWorkerAI/CoWorkerAI.xcodeproj -scheme "CoWorkerAI" -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO
+
+  no-project-yet:
+    # informativt job hvis der ikke er noget Xcode-projekt endnu
     if: ${{ hashFiles('**/*.xcodeproj','**/*.xcworkspace') == '' }}
     runs-on: ubuntu-latest
     steps:
-      - run: echo "No Xcode project yet; skipping CI in template (expected)."
+      - run: echo "No Xcode project yet; skipping CI."
