@@ -1,13 +1,12 @@
 name: CodeQL
+
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  push: { branches: [ main ] }
+  pull_request: { branches: [ main ] }
 
 jobs:
   analyze:
-    name: CodeQL (only when Swift exists)
+    # kør kun hvis der rent faktisk er Swift-filer
     if: ${{ hashFiles('**/*.swift') != '' }}
     runs-on: macos-14
     permissions:
@@ -23,8 +22,8 @@ jobs:
       - uses: github/codeql-action/autobuild@v3
       - uses: github/codeql-action/analyze@v3
 
-  template-ok:
+  no-swift:
     if: ${{ hashFiles('**/*.swift') == '' }}
     runs-on: ubuntu-latest
     steps:
-      - run: echo "No Swift code yet; skipping CodeQL in template (expected)."
+      - run: echo "No Swift files yet; skipping CodeQL."
