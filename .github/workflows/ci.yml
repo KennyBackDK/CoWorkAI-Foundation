@@ -8,57 +8,56 @@ on:
 
 jobs:
   build-test:
-    if: ${{ hashFiles('**/*.xcodeproj','**/*.xcworkspace') != '' }}
     runs-on: macos-14
-
     steps:
       - uses: actions/checkout@v5
 
-      - name: Select Xcode
-        run: sudo xcode-select -s "/Applications/Xcode.app"
-
-      - name: Discover Xcode project & scheme
+      # Find .xcodeproj (helst i CoWorkerAI/, ellers første i repo)
+      - name: Probe Xcode project
         id: probe
         run: |
           set -euo pipefail
-          # foretræk din mappe, men fald tilbage til første .xcodeproj hvor som helst
           PROJ="$(git ls-files 'CoWorkerAI/*.xcodeproj' | head -n1 || true)"
           if [ -z "$PROJ" ]; then PROJ="$(git ls-files '*.xcodeproj' | head -n1 || true)"; fi
-          if [ -z "$PROJ" ]; then echo "No .xcodeproj found in repo"; exit 1; fi
-          echo "Found project: $PROJ"
-          echo "project=$PROJ" >> "$GITHUB_OUTPUT"
-          echo "scheme=CoWorkerAI" >> "$GITHUB_OUTPUT"
-          echo "Tree around project:"; ls -R "$(dirname "$PROJ")" | sed 's/^/  /'
+          if [ -n "$PROJ" ]; then
+            echo "Found project: $PROJ"
+            echo "project=$PROJ" >> "$GITHUB_OUTPUT"
+            echo "found=true"   >> "$GITHUB_OUTPUT"
+          else
+            echo "No .xcodeproj found"
+            echo "found=false"  >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Verify scheme is Shared & bundle id
+      - name: No project yet (skip CI)
+        if: steps.probe.outputs.found != 'true'
+        run: echo "No Xcode project yet; skipping CI."
+
+      - name: Select Xcode
+        if: steps.probe.outputs.found == 'true'
+        run: sudo xcode-select -s "/Applications/Xcode.app"
+
+      - name: Verify shared scheme & bundle id
+        if: steps.probe.outputs.found == 'true'
         run: |
           set -euo pipefail
           PROJ="${{ steps.probe.outputs.project }}"
-          SCHEME="${{ steps.probe.outputs.scheme }}"
+          SCHEME="CoWorkerAI"
 
-          # 1) shared scheme?
-          if [ ! -f "$PROJ/xcshareddata/xcschemes/$SCHEME.xcscheme" ]; then
-            echo "Shared scheme missing: $PROJ/xcshareddata/xcschemes/$SCHEME.xcscheme"
-            echo "Available schemes:"
-            xcodebuild -project "$PROJ" -list
-            exit 1
-          fi
+          # Shared scheme?
+          test -f "$PROJ/xcshareddata/xcschemes/$SCHEME.xcscheme" \
+            || { echo "Shared scheme missing: $PROJ/xcshareddata/xcschemes/$SCHEME.xcscheme"; xcodebuild -project "$PROJ" -list; exit 1; }
           echo "✓ Shared scheme OK"
 
-          # 2) bundle id?
+          # Bundle id?
           BID="$(xcodebuild -project "$PROJ" -showBuildSettings -scheme "$SCHEME" -destination 'platform=macOS' 2>/dev/null \
                  | sed -n 's/^[[:space:]]*PRODUCT_BUNDLE_IDENTIFIER = \(.*\)$/\1/p' | tail -n1)"
           echo "Bundle id: $BID"
           test "$BID" = "com.kennyback.coworkerai" || { echo "Bundle id must be com.kennyback.coworkerai"; exit 1; }
 
       - name: Resolve SPM
-        run: xcodebuild -project "${{ steps.probe.outputs.project }}" -resolvePackageDependencies -scheme "${{ steps.probe.outputs.scheme }}"
+        if: steps.probe.outputs.found == 'true'
+        run: xcodebuild -project "${{ steps.probe.outputs.project }}" -resolvePackageDependencies -scheme "CoWorkerAI"
 
       - name: Build (macOS, no signing)
-        run: xcodebuild -project "${{ steps.probe.outputs.project }}" -scheme "${{ steps.probe.outputs.scheme }}" -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO
-
-  no-project-yet:
-    if: ${{ hashFiles('**/*.xcodeproj','**/*.xcworkspace') == '' }}
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "No Xcode project yet; skipping CI."
+        if: steps.probe.outputs.found == 'true'
+        run: xcodebuild -project "${{ steps.probe.outputs.project }}" -scheme "CoWorkerAI" -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO
