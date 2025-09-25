@@ -1,29 +1,41 @@
 name: CodeQL
 
 on:
-  push: { branches: [ main ] }
-  pull_request: { branches: [ main ] }
+  push:        { branches: [ main ] }
+  pull_request:{ branches: [ main ] }
 
 jobs:
   analyze:
-    # kør kun hvis der rent faktisk er Swift-filer
-    if: ${{ hashFiles('**/*.swift') != '' }}
     runs-on: macos-14
     permissions:
       actions: read
       contents: read
       security-events: write
+
     steps:
       - uses: actions/checkout@v5
+
+      - name: Probe for Swift files
+        id: probe
+        run: |
+          if git ls-files '*.swift' | grep -q .; then
+            echo "has_swift=true"  >> "$GITHUB_OUTPUT"
+          else
+            echo "has_swift=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: github/codeql-action/init@v3
+        if: steps.probe.outputs.has_swift == 'true'
         with:
           languages: swift
           queries: security-and-quality
-      - uses: github/codeql-action/autobuild@v3
-      - uses: github/codeql-action/analyze@v3
 
-  no-swift:
-    if: ${{ hashFiles('**/*.swift') == '' }}
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "No Swift files yet; skipping CodeQL."
+      - uses: github/codeql-action/autobuild@v3
+        if: steps.probe.outputs.has_swift == 'true'
+
+      - uses: github/codeql-action/analyze@v3
+        if: steps.probe.outputs.has_swift == 'true'
+
+      - name: No Swift yet (skip)
+        if: steps.probe.outputs.has_swift != 'true'
+        run: echo "No Swift files yet; skipping CodeQL."
