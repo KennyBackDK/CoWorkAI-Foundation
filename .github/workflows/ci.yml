@@ -8,7 +8,6 @@ on:
 
 jobs:
   build-test:
-    # kør kun, hvis der ER et Xcode-projekt i repoet
     if: ${{ hashFiles('**/*.xcodeproj','**/*.xcworkspace') != '' }}
     runs-on: macos-14
 
@@ -18,26 +17,47 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s "/Applications/Xcode.app"
 
-      - name: Verify scheme & bundle
+      - name: Discover Xcode project & scheme
+        id: probe
         run: |
-          test -f CoWorkerAI/CoWorkerAI.xcodeproj/xcshareddata/xcschemes/CoWorkerAI.xcscheme \
-            || { echo "Shared scheme mangler (Product ▸ Scheme ▸ Manage Schemes… ▸ Shared)"; exit 1; }
+          set -euo pipefail
+          # foretræk din mappe, men fald tilbage til første .xcodeproj hvor som helst
+          PROJ="$(git ls-files 'CoWorkerAI/*.xcodeproj' | head -n1 || true)"
+          if [ -z "$PROJ" ]; then PROJ="$(git ls-files '*.xcodeproj' | head -n1 || true)"; fi
+          if [ -z "$PROJ" ]; then echo "No .xcodeproj found in repo"; exit 1; fi
+          echo "Found project: $PROJ"
+          echo "project=$PROJ" >> "$GITHUB_OUTPUT"
+          echo "scheme=CoWorkerAI" >> "$GITHUB_OUTPUT"
+          echo "Tree around project:"; ls -R "$(dirname "$PROJ")" | sed 's/^/  /'
 
-          BID=$(xcodebuild -project CoWorkerAI/CoWorkerAI.xcodeproj \
-                 -showBuildSettings -scheme "CoWorkerAI" -destination 'platform=macOS' 2>/dev/null \
-                 | sed -n 's/^[[:space:]]*PRODUCT_BUNDLE_IDENTIFIER = \(.*\)$/\1/p' | tail -n1)
+      - name: Verify scheme is Shared & bundle id
+        run: |
+          set -euo pipefail
+          PROJ="${{ steps.probe.outputs.project }}"
+          SCHEME="${{ steps.probe.outputs.scheme }}"
+
+          # 1) shared scheme?
+          if [ ! -f "$PROJ/xcshareddata/xcschemes/$SCHEME.xcscheme" ]; then
+            echo "Shared scheme missing: $PROJ/xcshareddata/xcschemes/$SCHEME.xcscheme"
+            echo "Available schemes:"
+            xcodebuild -project "$PROJ" -list
+            exit 1
+          fi
+          echo "✓ Shared scheme OK"
+
+          # 2) bundle id?
+          BID="$(xcodebuild -project "$PROJ" -showBuildSettings -scheme "$SCHEME" -destination 'platform=macOS' 2>/dev/null \
+                 | sed -n 's/^[[:space:]]*PRODUCT_BUNDLE_IDENTIFIER = \(.*\)$/\1/p' | tail -n1)"
           echo "Bundle id: $BID"
-          [ "$BID" = "com.kennyback.coworkerai" ] \
-            || { echo "Bundle id skal være com.kennyback.coworkerai"; exit 1; }
+          test "$BID" = "com.kennyback.coworkerai" || { echo "Bundle id must be com.kennyback.coworkerai"; exit 1; }
 
       - name: Resolve SPM
-        run: xcodebuild -project CoWorkerAI/CoWorkerAI.xcodeproj -resolvePackageDependencies -scheme "CoWorkerAI"
+        run: xcodebuild -project "${{ steps.probe.outputs.project }}" -resolvePackageDependencies -scheme "${{ steps.probe.outputs.scheme }}"
 
       - name: Build (macOS, no signing)
-        run: xcodebuild -project CoWorkerAI/CoWorkerAI.xcodeproj -scheme "CoWorkerAI" -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO
+        run: xcodebuild -project "${{ steps.probe.outputs.project }}" -scheme "${{ steps.probe.outputs.scheme }}" -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO
 
   no-project-yet:
-    # informativt job hvis der ikke er noget Xcode-projekt endnu
     if: ${{ hashFiles('**/*.xcodeproj','**/*.xcworkspace') == '' }}
     runs-on: ubuntu-latest
     steps:
