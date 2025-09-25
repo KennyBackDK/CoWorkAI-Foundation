@@ -1,0 +1,20 @@
+{
+  "product_name": "CoWorkerAI",
+  "bundle_id": "com.kennyback.coworkerai",
+  "platform": "macos",
+  "min_os": "macOS 14",
+  "scheme_name": "CoWorkerAI",
+  "architecture": "MVVM + Services",
+  "modules": [
+    { "id": "app-shell",  "desc": "SwiftUI App, menu, main window",            "priority": "p0" },
+    { "id": "notes-crud", "desc": "Noter med tagging og søgning (lokal JSON)", "priority": "p0" },
+    { "id": "settings",   "desc": "Preferences: API-nøgle, tema, datafolder",   "priority": "p1" },
+    { "id": "logging",    "desc": "Struktureret log (os_log)",                   "priority": "p1" }
+  ],
+  "tech": {
+    "ui": "SwiftUI",
+    "concurrency": "async/await",
+    "di": "simple factory",
+    "persistence": "File-based JSON (første iteration)"
+  }
+}
