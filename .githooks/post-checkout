@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+echo "👉 Workflow: skriv 'workflow' for de 7 trin (branch → commit → push → PR → merge → main → pull)."
