@@ -25,3 +25,7 @@ git commit -m "feat: CoWorkAI Foundation v7.1"
 git branch -M main
 git remote add origin https://github.com/<OWNER>/coworkai-foundation.git
 git push -u origin main
+
+## Docs
+- [Ny app-guide](docs/new-project-guide.md)
+- [Preflight checks](docs/preflight-checks.md)
