@@ -1,0 +1,10 @@
+
+
+# ✅ Preflight checks for nye projekter
+
+1. Gå ind i projektmappen:
+   ```bash
+   cd "/Users/kenny/Xcode Projects/MitProjekt"
+
+scripts/preflight.sh
+
