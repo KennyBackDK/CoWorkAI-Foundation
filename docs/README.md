@@ -11,10 +11,10 @@
 - Ingen lange forklaringer når jeg beder om “workflow”.
 
 ## Vigtige dokumenter
-- **Project Prompt (kilde til alt):** [PROJECT_PROMPT.md](./PROJECT_PROMPT.md)
-- **Preflight (terminal-tjek før commit/push/PR):** [preflight-checks.md](./preflight-checks.md)
+- **Project Prompt:** [PROJECT_PROMPT.md](./PROJECT_PROMPT.md)
+- **Preflight:** [preflight-checks.md](./preflight-checks.md)
 - **Copilot/AI guide:** [COPILOT_GUIDE.md](./COPILOT_GUIDE.md)
-- **Ny feature / nyt projekt – guide:** [new-project-guide.md](./new-project-guide.md)
+- **Ny feature guide:** [new-project-guide.md](./new-project-guide.md)
 
 ## Workflow (kort)
 1. Gem/overskriv filen jeg arbejder på.

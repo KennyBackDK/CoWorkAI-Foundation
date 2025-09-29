@@ -1,3 +1,17 @@
+#!/bin/sh
+# Blocker utilsigtede filer (.save, .DS_Store osv.)
+
+for file in $(git diff --cached --name-only); do
+  case "$file" in
+    *.save|*.DS_Store)
+      echo "❌ FEJL: Du prøver at committe en forbudt fil: $file"
+      echo "👉 Fjern den med: git rm --cached $file"
+      exit 1
+      ;;
+  esac
+done
+
+exit 0
 #!/usr/bin/env bash
 set -euo pipefail
 
