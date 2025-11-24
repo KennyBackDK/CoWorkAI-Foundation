@@ -10,7 +10,7 @@ jobs:
   build-test:
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       # Find .xcodeproj (helst i CoWorkerAI/, ellers første i repo)
       - name: Probe Xcode project
